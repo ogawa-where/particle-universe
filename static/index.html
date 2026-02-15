@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Universe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a12;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        #canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #050510;
+            position: relative;
+        }
+
+        #sim-canvas {
+            max-width: 100%;
+            max-height: 100vh;
+            image-rendering: auto;
+        }
+
+        #sidebar {
+            width: 320px;
+            background: #12121f;
+            border-left: 1px solid #2a2a40;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 1px;
+            text-align: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a2a40;
+        }
+
+        h1 span {
+            font-size: 11px;
+            color: #888;
+            display: block;
+            font-weight: 400;
+            letter-spacing: 0;
+            margin-top: 4px;
+        }
+
+        .section {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .param-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .param-row label {
+            font-size: 12px;
+            min-width: 85px;
+            color: #aaa;
+        }
+
+        .param-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #2a2a40;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .param-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+        }
+
+        .param-row .value {
+            font-size: 11px;
+            color: #6366f1;
+            min-width: 36px;
+            text-align: right;
+            font-family: monospace;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: 1px solid #2a2a40;
+            background: #1e1e35;
+            color: #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.15s;
+            flex: 1;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .btn:hover {
+            background: #2a2a50;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
+        .btn.active {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
+        .btn.primary {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            background: #818cf8;
+        }
+
+        .btn.danger {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .btn.danger:hover {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        /* Interaction Matrix */
+        #matrix-container {
+            overflow: auto;
+        }
+
+        .matrix-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .matrix-table th {
+            font-size: 10px;
+            padding: 2px 4px;
+            text-align: center;
+        }
+
+        .matrix-table td {
+            padding: 1px;
+        }
+
+        .matrix-cell {
+            width: 100%;
+            height: 28px;
+            border: 1px solid #2a2a40;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .matrix-cell:hover {
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        .color-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 2px;
+            vertical-align: middle;
+        }
+
+        /* Stats overlay */
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: monospace;
+            color: #aaa;
+            pointer-events: none;
+        }
+
+        #stats .fps {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        /* Connection status */
+        #connection-status {
+            position: absolute;
+            top: 10px;
+            right: 330px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .status-connected { color: #4ade80; }
+        .status-disconnected { color: #ef4444; }
+        .status-connecting { color: #fbbf24; }
+
+        /* Toggle switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .toggle-row label {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .toggle {
+            position: relative;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #2a2a40;
+            border-radius: 10px;
+            transition: 0.2s;
+        }
+
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background: #888;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: #6366f1;
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+            background: #fff;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #12121f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a40;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="sim-canvas"></canvas>
+        <div id="stats">
+            FPS: <span class="fps" id="fps-display">--</span>
+            &nbsp;|&nbsp; Particles: <span id="particle-count">--</span>
+        </div>
+        <div id="connection-status" class="status-connecting">Connecting...</div>
+    </div>
+
+    <div id="sidebar">
+        <h1>
+            PARTICLE UNIVERSE
+            <span>GPU-Accelerated Artificial Life</span>
+        </h1>
+
+        <!-- Presets -->
+        <div class="section">
+            <div class="section-title">Presets</div>
+            <div class="btn-group">
+                <button class="btn primary" onclick="sendMessage({type:'randomize'})">Random</button>
+                <button class="btn" onclick="sendPreset('symmetric')">Symmetric</button>
+                <button class="btn" onclick="sendPreset('chains')">Chains</button>
+                <button class="btn" onclick="sendPreset('predator_prey')">Predator</button>
+            </div>
+            <div style="margin-top: 8px;">
+                <button class="btn danger" style="width:100%" onclick="sendMessage({type:'reset'})">Reset Particles</button>
+            </div>
+        </div>
+
+        <!-- Parameters -->
+        <div class="section">
+            <div class="section-title">Parameters</div>
+
+            <div class="param-row">
+                <label>Particles</label>
+                <input type="range" id="param-particles" min="1000" max="30000" step="1000" value="30000"
+                       oninput="updateParam('num_particles', this.value, this)">
+                <span class="value" id="val-particles">30000</span>
+            </div>
+
+            <div class="param-row">
+                <label>Friction</label>
+                <input type="range" id="param-friction" min="0.01" max="0.99" step="0.01" value="0.50"
+                       oninput="updateParam('friction', this.value, this)">
+                <span class="value" id="val-friction">0.50</span>
+            </div>
+
+            <div class="param-row">
+                <label>Force</label>
+                <input type="range" id="param-force" min="0.1" max="5.0" step="0.1" value="1.0"
+                       oninput="updateParam('force_scale', this.value, this)">
+                <span class="value" id="val-force">1.0</span>
+            </div>
+
+            <div class="param-row">
+                <label>Range</label>
+                <input type="range" id="param-cutoff" min="20" max="200" step="5" value="80"
+                       oninput="updateParam('cutoff_radius', this.value, this)">
+                <span class="value" id="val-cutoff">80</span>
+            </div>
+
+            <div class="param-row">
+                <label>Repulsion R</label>
+                <input type="range" id="param-repulsion" min="5" max="60" step="1" value="20"
+                       oninput="updateParam('repulsion_radius', this.value, this)">
+                <span class="value" id="val-repulsion">20</span>
+            </div>
+
+            <div class="param-row">
+                <label>Speed</label>
+                <input type="range" id="param-dt" min="0.1" max="3.0" step="0.1" value="1.0"
+                       oninput="updateParam('dt', this.value, this)">
+                <span class="value" id="val-dt">1.0</span>
+            </div>
+
+            <div class="toggle-row">
+                <label>Trails</label>
+                <div class="toggle">
+                    <input type="checkbox" id="toggle-trails" checked
+                           onchange="updateParam('trails', this.checked, this)">
+                    <span class="toggle-slider"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interaction Matrix -->
+        <div class="section">
+            <div class="section-title">Interaction Matrix</div>
+            <div id="matrix-container"></div>
+            <div style="font-size: 10px; color: #666; margin-top: 6px; text-align: center;">
+                Click cells to cycle: attract &rarr; neutral &rarr; repel
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TYPE_COLORS = [
+            '#ff3333', // Red
+            '#33cc33', // Green
+            '#4d80ff', // Blue
+            '#ffcc11', // Yellow
+            '#e64de6', // Magenta
+            '#11e6e6', // Cyan
+        ];
+
+        const canvas = document.getElementById('sim-canvas');
+        const ctx = canvas.getContext('2d');
+        const fpsDisplay = document.getElementById('fps-display');
+        const particleCount = document.getElementById('particle-count');
+        const connectionStatus = document.getElementById('connection-status');
+
+        let ws = null;
+        let numTypes = 6;
+        let rules = [];
+        let frameCount = 0;
+        let lastFpsTime = performance.now();
+
+        // ============================================================
+        // WebSocket Connection
+        // ============================================================
+
+        function connect() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws`);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'status-connected';
+                console.log('WebSocket connected');
+            };
+
+            ws.onmessage = (event) => {
+                if (typeof event.data === 'string') {
+                    const data = JSON.parse(event.data);
+                    handleServerMessage(data);
+                } else {
+                    // Binary frame data (JPEG)
+                    displayFrame(event.data);
+                }
+            };
+
+            ws.onclose = () => {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'status-disconnected';
+                console.log('WebSocket disconnected, reconnecting...');
+                setTimeout(connect, 2000);
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                ws.close();
+            };
+        }
+
+        function handleServerMessage(data) {
+            if (data.type === 'init') {
+                canvas.width = data.width;
+                canvas.height = data.height;
+                numTypes = data.num_types;
+                rules = data.rules;
+                particleCount.textContent = document.getElementById('param-particles').value;
+                buildMatrix();
+            }
+        }
+
+        function displayFrame(arrayBuffer) {
+            const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+            };
+            img.src = url;
+
+            // FPS counter
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFpsTime >= 1000) {
+                fpsDisplay.textContent = frameCount;
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+        }
+
+        // ============================================================
+        // Controls
+        // ============================================================
+
+        function sendMessage(msg) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(msg));
+                // If randomize or preset, request new rules
+                if (msg.type === 'randomize' || msg.type === 'preset') {
+                    // Rules will be updated on next matrix rebuild
+                    // For now, just regenerate random display
+                    setTimeout(() => {
+                        // Generate random matrix display (server will send actual rules)
+                        for (let i = 0; i < numTypes; i++) {
+                            for (let j = 0; j < numTypes; j++) {
+                                if (!rules[i]) rules[i] = [];
+                                rules[i][j] = 0; // Will be updated
+                            }
+                        }
+                    }, 100);
+                }
+            }
+        }
+
+        function sendPreset(name) {
+            sendMessage({ type: 'preset', name: name });
+        }
+
+        function updateParam(name, value, el) {
+            // Update display value
+            const paramMap = {
+                'num_particles': 'val-particles',
+                'friction': 'val-friction',
+                'force_scale': 'val-force',
+                'cutoff_radius': 'val-cutoff',
+                'repulsion_radius': 'val-repulsion',
+                'dt': 'val-dt',
+            };
+
+            if (paramMap[name]) {
+                document.getElementById(paramMap[name]).textContent = value;
+            }
+
+            if (name === 'num_particles') {
+                particleCount.textContent = value;
+            }
+
+            sendMessage({
+                type: 'set_param',
+                name: name,
+                value: name === 'trails' ? value : parseFloat(value)
+            });
+        }
+
+        // ============================================================
+        // Interaction Matrix UI
+        // ============================================================
+
+        function buildMatrix() {
+            const container = document.getElementById('matrix-container');
+            let html = '<table class="matrix-table"><tr><th></th>';
+
+            for (let j = 0; j < numTypes; j++) {
+                html += `<th><span class="color-dot" style="background:${TYPE_COLORS[j]}"></span></th>`;
+            }
+            html += '</tr>';
+
+            for (let i = 0; i < numTypes; i++) {
+                html += `<tr><th><span class="color-dot" style="background:${TYPE_COLORS[i]}"></span></th>`;
+                for (let j = 0; j < numTypes; j++) {
+                    const val = (rules[i] && rules[i][j] !== undefined) ? rules[i][j] : 0;
+                    const color = getMatrixColor(val);
+                    html += `<td><div class="matrix-cell" id="cell-${i}-${j}"
+                                  style="background:${color}"
+                                  onclick="cycleRule(${i},${j})"
+                                  title="[${i}→${j}] = ${val.toFixed(2)}"></div></td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function getMatrixColor(val) {
+            if (val > 0) {
+                const intensity = Math.min(val, 1);
+                return `rgba(99, 102, 241, ${0.2 + intensity * 0.8})`;
+            } else if (val < 0) {
+                const intensity = Math.min(-val, 1);
+                return `rgba(239, 68, 68, ${0.2 + intensity * 0.8})`;
+            }
+            return 'rgba(100, 100, 100, 0.2)';
+        }
+
+        function cycleRule(i, j) {
+            if (!rules[i]) rules[i] = [];
+            let current = rules[i][j] || 0;
+
+            // Cycle: positive -> 0 -> negative -> positive
+            if (current > 0.3) {
+                current = 0;
+            } else if (current > -0.3) {
+                current = -1.0;
+            } else {
+                current = 1.0;
+            }
+
+            rules[i][j] = current;
+
+            const cell = document.getElementById(`cell-${i}-${j}`);
+            cell.style.background = getMatrixColor(current);
+            cell.title = `[${i}→${j}] = ${current.toFixed(2)}`;
+
+            sendMessage({
+                type: 'set_rule',
+                i: i,
+                j: j,
+                value: current
+            });
+        }
+
+        // ============================================================
+        // Initialize
+        // ============================================================
+
+        // Init matrix
+        for (let i = 0; i < numTypes; i++) {
+            rules[i] = [];
+            for (let j = 0; j < numTypes; j++) {
+                rules[i][j] = 0;
+            }
+        }
+        buildMatrix();
+
+        // Connect
+        connect();
+    </script>
+</body>
+</html>
